@@ -1,7 +1,6 @@
-#include "vm.h"
+#include <neutron.h>
 #include <string>
-#include <vector>
-#include <stdexcept>
+#include <cstring>
 
 // Include the base64 implementation directly to avoid linking issues
 namespace base64 {
@@ -99,43 +98,46 @@ namespace base64 {
 }
 
 // Native function to encode a string to base64
-neutron::Value base64_encode(std::vector<neutron::Value> arguments) {
-    try {
-        if (arguments.size() != 1) {
-            return neutron::Value(std::string("")); // Return empty string on wrong arg count
-        }
-        if (arguments[0].type != neutron::ValueType::STRING) {
-            return neutron::Value(std::string("")); // Return empty string on wrong type
-        }
-        std::string input = std::get<std::string>(arguments[0].as);
-        std::string encoded = base64::encode(input);
-        return neutron::Value(encoded);
-    } catch (...) {
-        return neutron::Value(std::string("")); // Return empty string on any error
+NeutronValue* base64_encode(NeutronVM* vm, int argCount, NeutronValue** args) {
+    if (argCount != 1) {
+        // Return empty string on wrong arg count
+        return neutron_new_string("", 0);
     }
+    
+    if (!neutron_is_string(args[0])) {
+        // Return empty string on wrong type
+        return neutron_new_string("", 0);
+    }
+    
+    size_t length;
+    const char* input = neutron_get_string(args[0], &length);
+    std::string input_str(input, length);
+    std::string encoded = base64::encode(input_str);
+    return neutron_new_string(encoded.c_str(), encoded.length());
 }
 
 // Native function to decode a base64 string
-neutron::Value base64_decode(std::vector<neutron::Value> arguments) {
-    try {
-        if (arguments.size() != 1) {
-            return neutron::Value(std::string("")); // Return empty string on wrong arg count
-        }
-        if (arguments[0].type != neutron::ValueType::STRING) {
-            return neutron::Value(std::string("")); // Return empty string on wrong type
-        }
-        std::string input = std::get<std::string>(arguments[0].as);
-        std::string decoded = base64::decode(input);
-        return neutron::Value(decoded);
-    } catch (...) {
-        return neutron::Value(std::string("")); // Return empty string on any error
+NeutronValue* base64_decode(NeutronVM* vm, int argCount, NeutronValue** args) {
+    if (argCount != 1) {
+        // Return empty string on wrong arg count
+        return neutron_new_string("", 0);
     }
+    
+    if (!neutron_is_string(args[0])) {
+        // Return empty string on wrong type
+        return neutron_new_string("", 0);
+    }
+    
+    size_t length;
+    const char* input = neutron_get_string(args[0], &length);
+    std::string input_str(input, length);
+    std::string decoded = base64::decode(input_str);
+    return neutron_new_string(decoded.c_str(), decoded.length());
 }
 
-// Module initialization function  
-extern "C" void neutron_module_init(neutron::VM* vm) {
-    // Add functions to the VM's globals (which are temporarily cleared during module loading)
-    // The load_module system will later capture these into the module environment
-    vm->define("encode", neutron::Value(new neutron::NativeFn(base64_encode, 1)));
-    vm->define("decode", neutron::Value(new neutron::NativeFn(base64_decode, 1)));
+// Module initialization function
+extern "C" void neutron_module_init(NeutronVM* vm) {
+    // Define the functions in the module
+    neutron_define_native(vm, "encode", base64_encode, 1);
+    neutron_define_native(vm, "decode", base64_decode, 1);
 }
